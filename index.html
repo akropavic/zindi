@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Korner">
+    <title>Korner - Hava Durumu</title>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <style>
+        /* GENEL AYARLAR */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #121212; color: #ffffff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* GİZLİ SCROLLBAR */
+        ::-webkit-scrollbar { display: none; }
+        
+        /* ÜST BAŞLIK & İLÇE SEÇİCİ */
+        header { background-color: #1E1E1E; padding: 15px; border-bottom: 1px solid #2A2A2A; padding-top: env(safe-area-inset-top, 15px); display: flex; align-items: center; justify-content: center; }
+        
+        .district-selector { position: relative; display: flex; align-items: center; background-color: #252525; padding: 8px 16px; border-radius: 12px; border: 1px solid #333; }
+        .district-selector ion-icon { color: #10B981; font-size: 20px; margin-right: 8px; }
+        .district-selector select { background: transparent; border: none; color: #fff; font-size: 16px; font-weight: bold; appearance: none; outline: none; padding-right: 20px; cursor: pointer; }
+        .district-selector .chevron { position: absolute; right: 12px; color: #666; font-size: 16px; pointer-events: none; }
+
+        /* ANA İÇERİK */
+        main { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 90px; }
+        
+        .card { background-color: #1E1E1E; border-radius: 20px; padding: 20px; margin-bottom: 16px; border: 1px solid #2A2A2A; }
+        .section-title { font-size: 14px; color: #A3A3A3; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
+
+        /* ANLIK HAVA */
+        .current-weather { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .current-weather ion-icon { font-size: 80px; }
+        .current-temp-box { margin-left: 20px; }
+        .current-temp { font-size: 48px; font-weight: bold; line-height: 1; }
+        .current-desc { font-size: 16px; color: #10B981; font-weight: 600; margin-top: 4px; }
+        
+        .current-details { display: flex; justify-content: space-around; background-color: #252525; border-radius: 16px; padding: 15px; }
+        .detail-item { display: flex; flex-direction: column; align-items: center; }
+        .detail-item ion-icon { color: #60A5FA; font-size: 20px; }
+        .detail-item:nth-child(2) ion-icon { color: #10B981; }
+        .detail-label { font-size: 12px; color: #A3A3A3; margin-top: 6px; }
+        .detail-value { font-size: 15px; font-weight: bold; margin-top: 2px; }
+
+        /* SAATLİK TAHMİN (YATAY KAYDIRMA) */
+        .hourly-container { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; }
+        .hourly-item { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
+        .hourly-time { font-size: 13px; color: #A3A3A3; font-weight: 600; }
+        .hourly-item ion-icon { font-size: 28px; margin: 8px 0; }
+        .hourly-temp { font-size: 16px; font-weight: bold; }
+        .hourly-rain { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #60A5FA; margin-top: 4px; font-weight: bold; }
+
+        /* GÜNLÜK TAHMİN */
+        .daily-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #2A2A2A; }
+        .daily-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .daily-day { flex: 2; font-size: 15px; font-weight: 600; }
+        .daily-rain { flex: 1; display: flex; align-items: center; justify-content: center; color: #60A5FA; font-size: 13px; font-weight: bold; gap: 4px; }
+        .daily-icon { flex: 1; text-align: center; font-size: 24px; }
+        .daily-temps { flex: 1.5; text-align: right; font-size: 15px; }
+        .daily-temps span.min { color: #A3A3A3; margin-right: 8px; }
+        .daily-temps span.max { font-weight: bold; color: #fff; }
+
+        /* ALT SEKMELER */
+        nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #1E1E1E; display: flex; justify-content: space-around; padding: 10px 0; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #2A2A2A; z-index: 999; }
+        .tab { display: flex; flex-direction: column; align-items: center; color: #666; cursor: pointer; text-decoration: none; width: 33%; }
+        .tab.active { color: #10B981; }
+        .tab ion-icon { font-size: 24px; margin-bottom: 4px; }
+        .tab span { font-size: 12px; font-weight: 600; }
+
+        /* YÜKLENİYOR */
+        #loader { display: flex; justify-content: center; align-items: center; height: 100%; }
+        .spinner { border: 3px solid #2A2A2A; border-top: 3px solid #10B981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #content { display: none; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="district-selector">
+            <ion-icon name="location"></ion-icon>
+            <select id="district-select" onchange="changeDistrict()"></select>
+            <ion-icon name="chevron-down" class="chevron"></ion-icon>
+        </div>
+    </header>
+
+    <main>
+        <div id="loader"><div class="spinner"></div></div>
+        
+        <div id="content">
+            <div class="card">
+                <div class="current-weather">
+                    <ion-icon id="current-icon" name="sunny" style="color: #FBBF24;"></ion-icon>
+                    <div class="current-temp-box">
+                        <div class="current-temp" id="current-temp">--°</div>
+                        <div class="current-desc" id="current-desc">Yükleniyor...</div>
+                    </div>
+                </div>
+                <div class="current-details">
+                    <div class="detail-item">
+                        <ion-icon name="water"></ion-icon>
+                        <div class="detail-label">Yağış</div>
+                        <div class="detail-value" id="current-rain">-- mm</div>
+                    </div>
+                    <div style="width: 1px; background-color: #333;"></div>
+                    <div class="detail-item">
+                        <ion-icon name="leaf"></ion-icon>
+                        <div class="detail-label">Rüzgar</div>
+                        <div class="detail-value" id="current-wind">-- km/s</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title"><ion-icon name="time-outline"></ion-icon> Saatlik Tahmin</div>
+                <div class="hourly-container" id="hourly-list">
+                    </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title"><ion-icon name="calendar-outline"></ion-icon> 7 Günlük Tahmin</div>
+                <div id="daily-list">
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <nav>
+        <a href="index.html" class="tab active">
+            <ion-icon name="partly-sunny"></ion-icon>
+            <span>Hava</span>
+        </a>
+        <a href="live.html" class="tab">
+            <ion-icon name="radio"></ion-icon>
+            <span>Canlı</span>
+        </a>
+        <a href="team.html" class="tab">
+            <ion-icon name="shield-half"></ion-icon>
+            <span>Takımım</span>
+        </a>
+    </nav>
+
+    <script>
+        const ISTANBUL_DISTRICTS = [
+            { name: 'Adalar', lat: 40.875, lon: 29.133 }, { name: 'Arnavutköy', lat: 41.184, lon: 28.741 },
+            { name: 'Ataşehir', lat: 40.984, lon: 29.106 }, { name: 'Avcılar', lat: 40.980, lon: 28.721 },
+            { name: 'Bağcılar', lat: 41.033, lon: 28.857 }, { name: 'Bahçelievler', lat: 41.002, lon: 28.861 },
+            { name: 'Bakırköy', lat: 40.983, lon: 28.872 }, { name: 'Başakşehir', lat: 41.097, lon: 28.806 },
+            { name: 'Bayrampaşa', lat: 41.034, lon: 28.905 }, { name: 'Beşiktaş', lat: 41.042, lon: 29.007 },
+            { name: 'Beykoz', lat: 41.117, lon: 29.096 }, { name: 'Beylikdüzü', lat: 41.003, lon: 28.641 },
+            { name: 'Beyoğlu', lat: 41.031, lon: 28.973 }, { name: 'Büyükçekmece', lat: 41.021, lon: 28.579 },
+            { name: 'Çatalca', lat: 41.143, lon: 28.461 }, { name: 'Çekmeköy', lat: 41.035, lon: 29.178 },
+            { name: 'Esenler', lat: 41.039, lon: 28.880 }, { name: 'Esenyurt', lat: 41.034, lon: 28.680 },
+            { name: 'Eyüpsultan', lat: 41.046, lon: 28.925 }, { name: 'Fatih', lat: 41.014, lon: 28.943 },
+            { name: 'Gaziosmanpaşa', lat: 41.057, lon: 28.906 }, { name: 'Güngören', lat: 41.025, lon: 28.873 },
+            { name: 'Kadıköy', lat: 40.990, lon: 29.026 }, { name: 'Kağıthane', lat: 41.080, lon: 28.973 },
+            { name: 'Kartal', lat: 40.888, lon: 29.185 }, { name: 'Küçükçekmece', lat: 41.000, lon: 28.784 },
+            { name: 'Maltepe', lat: 40.924, lon: 29.131 }, { name: 'Pendik', lat: 40.876, lon: 29.235 },
+            { name: 'Sancaktepe', lat: 41.006, lon: 29.225 }, { name: 'Sarıyer', lat: 41.166, lon: 29.050 },
+            { name: 'Silivri', lat: 41.074, lon: 28.246 }, { name: 'Sultanbeyli', lat: 40.967, lon: 29.267 },
+            { name: 'Sultangazi', lat: 41.106, lon: 28.883 }, { name: 'Şile', lat: 41.174, lon: 29.613 },
+            { name: 'Şişli', lat: 41.060, lon: 28.987 }, { name: 'Tuzla', lat: 40.816, lon: 29.303 },
+            { name: 'Ümraniye', lat: 41.025, lon: 29.099 }, { name: 'Üsküdar', lat: 41.025, lon: 29.015 },
+            { name: 'Zeytinburnu', lat: 40.989, lon: 28.903 }
+        ];
+
+        // Seçimi Doldur (Esenyurt Varsayılan - Index 17)
+        const selectEl = document.getElementById('district-select');
+        ISTANBUL_DISTRICTS.forEach((d, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.text = d.name;
+            if (d.name === 'Esenyurt') option.selected = true;
+            selectEl.appendChild(option);
+        });
+
+        // Hava Durumu İkon ve Renk Çevirici
+        const getWeatherDetails = (code) => {
+            if (code === 0) return { text: 'Açık', icon: 'sunny', color: '#FBBF24' };
+            if (code >= 1 && code <= 3) return { text: 'Parçalı Bulutlu', icon: 'partly-sunny', color: '#9CA3AF' };
+            if (code >= 45 && code <= 48) return { text: 'Sisli', icon: 'cloud-offline', color: '#9CA3AF' };
+            if (code >= 51 && code <= 67) return { text: 'Yağmurlu', icon: 'rainy', color: '#60A5FA' };
+            if (code >= 71 && code <= 77) return { text: 'Kar Yağışlı', icon: 'snow', color: '#E5E7EB' };
+            if (code >= 80 && code <= 82) return { text: 'Sağanak', icon: 'thunderstorm', color: '#3B82F6' };
+            if (code >= 95 && code <= 99) return { text: 'Fırtına', icon: 'thunderstorm', color: '#818CF8' };
+            return { text: 'Bulutlu', icon: 'cloud', color: '#9CA3AF' };
+        };
+
+        async function fetchWeather() {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('content').style.display = 'none';
+
+            const district = ISTANBUL_DISTRICTS[selectEl.value];
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${district.lat}&longitude=${district.lon}&current=temperature_2m,weather_code,wind_speed_10m,precipitation&hourly=temperature_2m,precipitation_probability,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+
+                // Anlık Hava
+                const currentDetails = getWeatherDetails(data.current.weather_code);
+                document.getElementById('current-icon').name = currentDetails.icon;
+                document.getElementById('current-icon').style.color = currentDetails.color;
+                document.getElementById('current-temp').innerText = `${Math.round(data.current.temperature_2m)}°`;
+                document.getElementById('current-desc').innerText = currentDetails.text;
+                document.getElementById('current-rain').innerText = `${data.current.precipitation} mm`;
+                document.getElementById('current-wind').innerText = `${data.current.wind_speed_10m} km/s`;
+
+                // Saatlik Hava (Önümüzdeki 24 saat)
+                const hourlyList = document.getElementById('hourly-list');
+                hourlyList.innerHTML = '';
+                const currentHourIndex = data.hourly.time.findIndex(time => new Date(time) >= new Date());
+                
+                for (let i = currentHourIndex; i < currentHourIndex + 24; i++) {
+                    if (data.hourly.time[i]) {
+                        const hDetails = getWeatherDetails(data.hourly.weather_code[i]);
+                        const timeStr = new Date(data.hourly.time[i]).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                        
+                        hourlyList.innerHTML += `
+                            <div class="hourly-item">
+                                <span class="hourly-time">${timeStr}</span>
+                                <ion-icon name="${hDetails.icon}" style="color: ${hDetails.color}"></ion-icon>
+                                <span class="hourly-temp">${Math.round(data.hourly.temperature_2m[i])}°</span>
+                                <div class="hourly-rain"><ion-icon name="umbrella"></ion-icon> %${data.hourly.precipitation_probability[i]}</div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Günlük Hava (7 Gün)
+                const dailyList = document.getElementById('daily-list');
+                dailyList.innerHTML = '';
+                const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+                data.daily.time.forEach((dateStr, index) => {
+                    let dayName = days[new Date(dateStr).getDay()];
+                    if (index === 0) dayName = 'Bugün';
+                    if (index === 1) dayName = 'Yarın';
+                    
+                    const dDetails = getWeatherDetails(data.daily.weather_code[index]);
+
+                    dailyList.innerHTML += `
+                        <div class="daily-item">
+                            <div class="daily-day">${dayName}</div>
+                            <div class="daily-rain"><ion-icon name="umbrella"></ion-icon> %${data.daily.precipitation_probability_max[index]}</div>
+                            <div class="daily-icon"><ion-icon name="${dDetails.icon}" style="color: ${dDetails.color}"></ion-icon></div>
+                            <div class="daily-temps">
+                                <span class="min">${Math.round(data.daily.temperature_2m_min[index])}°</span>
+                                <span class="max">${Math.round(data.daily.temperature_2m_max[index])}°</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+            } catch (error) {
+                console.error("Veri çekilemedi:", error);
+                alert("Hava durumu verisi alınamadı!");
+            }
+        }
+
+        function changeDistrict() {
+            fetchWeather();
+        }
+
+        // İlk Yükleme
+        fetchWeather();
+    </script>
+</body>
+</html>
